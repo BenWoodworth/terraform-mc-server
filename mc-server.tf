@@ -32,6 +32,14 @@ resource "local_file" "craftbukkit-jar" {
 }
 
 # server.properties
+resource "local_file" "server-properties" {
+  filename = "${abspath(path.module)}/out/server.properties"
+  content = join("\n", [
+    "motd=A \\u00A75Terraform\\u00A7r-Provisioned Minecraft Server!",
+    "gamemode=creative",
+    "level-seed=t3rr4f0rm-w00t!"
+  ])
+}
 
 # EULA
 resource "local_file" "minecraft-eula" {
@@ -45,7 +53,10 @@ resource "local_file" "minecraft-eula" {
 
 # Server start
 resource "null_resource" "server-start" {
-  depends_on = [local_file.minecraft-eula]
+  depends_on = [
+    local_file.minecraft-eula,
+    local_file.server-properties
+  ]
 
   provisioner "local-exec" {
     working_dir = "${abspath(path.module)}/out"
