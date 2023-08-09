@@ -13,13 +13,23 @@ data "http-bin" "build-tools-jar-content" {
 }
 
 resource "local_sensitive_file" "build-tools-jar" {
-  filename = "out/BuildTools/BuildTools.jar"
+  filename = "${abspath(path.module)}/out/BuildTools/BuildTools.jar"
   content_base64 = data.http-bin.build-tools-jar-content.response_body
 }
 
-# Build CraftBukkit
+# CraftBukkit
+resource "null_resource" "craftbukkit-jar-compilation" {
+  provisioner "local-exec" {
+    working_dir = "${abspath(path.module)}/out/BuildTools"
+    command = "/opt/homebrew/opt/openjdk/bin/java -jar ${local_sensitive_file.build-tools-jar.filename} --rev 1.20.1 --compile craftbukkit"
+  }
+}
 
-# Java 17
+resource "local_file" "craftbukkit-jar" {
+  filename = "out/craftbukkit-1.20.1.jar"
+  source = "out/BuildTools/craftbukkit-1.20.1.jar"
+  depends_on = [null_resource.craftbukkit-jar-compilation]
+}
 
 # Server start (script?)
 
