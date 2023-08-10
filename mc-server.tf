@@ -13,27 +13,37 @@ data "http-bin" "build-tools-jar-content" {
 }
 
 resource "local_sensitive_file" "build-tools-jar" {
-  filename = "${abspath(path.module)}/out/BuildTools/BuildTools.jar"
+  filename = "${abspath(path.module)}/out/BuildTools.jar"
   content_base64 = data.http-bin.build-tools-jar-content.response_body
 }
 
 # CraftBukkit
 resource "null_resource" "craftbukkit-jar-compilation" {
   provisioner "local-exec" {
-    working_dir = "${abspath(path.module)}/out/BuildTools"
-    command = "/opt/homebrew/opt/openjdk/bin/java -jar ${local_sensitive_file.build-tools-jar.filename} --rev 1.20.1 --compile craftbukkit"
+    working_dir = "${abspath(path.module)}/out"
+    command = join(";\n", [
+      "mkdir BuildTools",
+      "cd BuildTools",
+      "/opt/homebrew/opt/openjdk/bin/java -jar ${local_sensitive_file.build-tools-jar.filename} --rev 1.20.1 --compile craftbukkit"
+    ])
+  }
+
+  provisioner "local-exec" {
+    when = destroy
+    working_dir = "${abspath(path.module)}/out"
+    command = "rm -rf BuildTools"
   }
 }
 
 resource "local_file" "craftbukkit-jar" {
-  filename = "${abspath(path.module)}/out/craftbukkit-1.20.1.jar"
+  filename = "${abspath(path.module)}/out/BuildTools/craftbukkit-1.20.1.jar"
   source = "${abspath(path.module)}/out/BuildTools/craftbukkit-1.20.1.jar"
   depends_on = [null_resource.craftbukkit-jar-compilation]
 }
 
 # server.properties
 resource "local_file" "server-properties" {
-  filename = "${abspath(path.module)}/out/server.properties"
+  filename = "${abspath(path.module)}/out/Server/server.properties"
   content = join("\n", [
     "motd=A \\u00A75Terraform\\u00A7r-Provisioned Minecraft Server!",
     "gamemode=creative",
@@ -43,7 +53,7 @@ resource "local_file" "server-properties" {
 
 # EULA
 resource "local_file" "minecraft-eula" {
-  filename = "${abspath(path.module)}/out/eula.txt"
+  filename = "${abspath(path.module)}/out/Server/eula.txt"
   content = "eula=true"
 }
 
@@ -59,7 +69,13 @@ resource "null_resource" "server-start" {
   ]
 
   provisioner "local-exec" {
-    working_dir = "${abspath(path.module)}/out"
+    working_dir = "${abspath(path.module)}/out/Server"
     command = "/opt/homebrew/opt/openjdk/bin/java -jar ${local_file.craftbukkit-jar.filename}" # --nogui
+  }
+
+  provisioner "local-exec" {
+    when = destroy
+    working_dir = "${abspath(path.module)}/out"
+    command = "rm -rf Server"
   }
 }
