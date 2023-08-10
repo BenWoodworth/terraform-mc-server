@@ -62,7 +62,7 @@ resource "local_file" "minecraft-eula" {
 # Plugin configuration
 
 # Server start
-resource "null_resource" "server-start" {
+resource "null_resource" "server" {
   depends_on = [
     local_file.minecraft-eula,
     local_file.server-properties
@@ -70,12 +70,12 @@ resource "null_resource" "server-start" {
 
   provisioner "local-exec" {
     working_dir = "${abspath(path.module)}/out/Server"
-    command = "/opt/homebrew/opt/openjdk/bin/java -jar ${local_file.craftbukkit-jar.filename}" # --nogui
+    command = "tmux new-session -d -s mc-server '/opt/homebrew/opt/openjdk/bin/java -jar \"${local_file.craftbukkit-jar.filename}\" --nogui; tmux wait-for -S mc-server-closed'"
   }
 
   provisioner "local-exec" {
     when = destroy
     working_dir = "${abspath(path.module)}/out"
-    command = "rm -rf Server"
+    command = "tmux kill-session -t mc-server\\; wait-for mc-server-closed || true"
   }
 }
